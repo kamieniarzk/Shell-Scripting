@@ -1,0 +1,52 @@
+#!/bin/sh
+
+touch a B c D e F aBcDeF
+mkdir sub1
+cd sub1
+touch a B c D e F aBcDeF
+mkdir sub2
+cd sub2
+touch g H i J k gHiJk
+cd ../..
+
+
+./modify -h
+echo "Initial state of the directory tree below"
+ls -R
+
+#=========================================================
+#================CORRECT EXAMPLES=========================
+
+echo "\nuppercasing files 'a', 'c' and 'e'\n"
+./modify -u a c e
+echo "lowercasing files 'B', 'D' and 'F'\n"
+./modify -l B D F
+echo "substituting aBcDeF to AbCdEf using sed pattern\n"
+./modify 's/aBcDeF/AbCdEf/' aBcDeF
+
+echo "calling ls in current directory after modifying files"
+ls
+echo "\nlowercasing all the files in ./sub1/*"
+./modify -l ./sub1/*
+echo "\nrecursively uppercasing all the files in ./sub1"
+./modify -r -u ./sub1
+ls -R
+echo "\nlowercasing file ./sub1/ABCDEF"
+./modify -l ./sub1/ABCDEF 
+
+#=========================================================
+#==================INCORRECT EXAMPLES=====================
+echo "\ncalling modify with no arguments"
+./modify
+echo "\ncalling modify with one argument"
+./modify a
+echo "\nusing incorrect sed pattern"
+./modify 's/a/b' A
+echo "\ntrying to modify non-existing file"
+./modify -u a
+echo "\ntrying to rename a file to a name that already exists in the directory"
+./modify 's/A/b/' A
+mkdir ./sub1/sub2/sub3
+echo "Trying to uppercase every file recursively in an empty directory"
+./modify -r -u ./sub1/sub2/sub3
+
