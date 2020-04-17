@@ -6,30 +6,33 @@
 
 COUNT=0		    # number of files renamed
 SED=""		    # sed pattern
-DEPTH="-maxdepth 0" # option for find command
+DEPTH="-maxdepth 0" # option for find command (depending on recursion)
 
 renameFile()	    # $1 = filename 
 {
-PATHNAME=$(dirname $1)
+PATHNAME=$(dirname $1)	# stores path of $1
 case $OPTION in
-	u) FILENAME=`echo $(basename $1) | tr a-z A-Z`
+	u) FILENAME=`echo $(basename $1) | tr a-z A-Z` # changes basename (filename) to uppercase
 	   NEW="${PATHNAME}/${FILENAME}";;
-       	l) FILENAME=`echo $(basename $1) | tr A-Z a-z`
+       	l) FILENAME=`echo $(basename $1) | tr A-Z a-z` # changes filename to lowercase
  	   NEW="${PATHNAME}/${FILENAME}";;
          
-	s) FILENAME=`echo $(basename $1) | sed -s  "$SED"` 2>/dev/null # turns off stderr for this command
+	s) FILENAME=`echo $(basename $1) | sed -s  "$SED"` 2>/dev/null # applies sed on the filename and turns off stderr of sed
            if test $? != 0; then
 		 echo "Wrong sed pattern!"
 		 return 1
 	   fi
 	   NEW="${PATHNAME}/${FILENAME}";;
 esac
-           if ! test -e "$NEW"; then
+           if ! test -e "$NEW"; then	
+		 # if file with the $NEW name doesn't exist, rename
 		 mv "$1" "$NEW"
 		 if test $? = 0; then
+		 # if renaming was successful, increment count
 		 COUNT=$((COUNT+1))
 		 fi
 	   elif test "$FILENAME" != $(basename $1); then
+		 # if file with new name exists and it's not the same as the one we're trying to modify
 	 	 echo "Couldn't modify $(basename $1) in $PATHNAME becasue $FILENAME already exists!"
 	   fi
 }
@@ -42,17 +45,19 @@ echo "\n\t[-r] - with this option files are renamed recursively"
 echo "\t[-l] - lowercasing the name\n\t[-u] - uppercasing the name"
 echo "\t<sed pattern> - apply sed command to the filenames"
 }
+
+# checking if there are any arguments
 if [ $# -lt 1 ]; then
 	echo "No arguments! To see help, use: modify -h" 
 	exit 1
 fi
 
-
+# checking if help or recursiveness were specified
 case "$1" in
-	-r) DEPTH="-mindepth 1" shift;;
+	-r) DEPTH="-mindepth 1" shift;;  # if recursion is on - mindepth is specified for find command, otherwise find would return the directory itself (depth 0)
 	-h) displayHelp; exit 0; shift;;
 esac	
-
+# checking for option (-u, -l or sed)
 case "$1" in
 	-u) OPTION=u;;
 	-l) OPTION=l;;
@@ -61,29 +66,35 @@ esac
 
 shift
 
+# checking if there are any filenames/directories passed
 if test -z "$1"; then
 	echo "Not enough arguments! To see help, use: modify -h"
 	exit 1
 fi
 
-
+# looping through the filenames/directories
 while test -n "$1"
 do
 	if test -f "$1"; then
+		# if it's a filename, rename
 		renameFile "$1"
 		shift
 	
 	elif test -d "$1"; then
+		# if it's a directory use find with DEPTH (option for recursion) and directory path
 		for i in `find "$1" $DEPTH -type f`; do
 			renameFile "$i"
 		done
 		if [ -z $i ]  && [ "$DEPTH" = "-mindepth 1" ]; then
+			# if recursion is on and find returns nothing
 			echo "No files to rename in $1."
 		elif [ -z $i ] && [ "$DEPTH" = "-maxdepth 0" ]; then
+			# if recursion is off and single directory is specified
 			echo "$1 is a directory."
 		fi
 		shift
 	else
+		# if $1 is neither a directory nor a file
 		echo "No such file or directory: $1"
 		shift
 	fi
