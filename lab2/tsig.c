@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
         } else if(childID < 0) {
             fprintf(stderr, "PARENT %i: UNABLE TO CREATE CHILD\n", getpid()); // printing message to stderr about failed try to create child
             for(j = 0; j < i; j++) {
-                kill(j, SIGTERM);	// terminating all the children processes made so far
+                kill(children[j], SIGTERM);	// terminating all the children processes made so far
             }
 
             exit(1);
@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
             printf("parent[%i]: the creation process interrupted.\n", getpid());
             printf("parent[%i]: sending SIGTERM signal.\n", getpid());
             for(j = 0; j < i; j++) {
-                kill(j, SIGTERM);	// terminating child processes
+                kill(children[j], SIGTERM);	// terminating child processes
             }
             
             
