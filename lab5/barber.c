@@ -14,10 +14,10 @@
 #define CHAIRS 4
 #define CLIENTS 30
 
-#define KEY_BARBER 0x0000
-#define KEY_CLIENT 0x0001
-#define KEY_ROOM 0x0002
-#define KEY_MEM 0x0003
+#define KEY_BARBER 0x0011
+#define KEY_CLIENT 0x0022
+#define KEY_ROOM 0x0033
+#define KEY_MEM 0x0044
 
 enum type
 {
@@ -164,7 +164,7 @@ int main()
             while (1)
             {
                 client(i, rand() % 2); // random gender
-                sleep(rand() % 3);
+                sleep(2 + rand() % 4); // 2 to 5 seconds before client goes to barber again
             }
             return 0;
         }
@@ -185,20 +185,18 @@ void barber(int id, int type)
     printf(" barber[%d] created\n", id);
     int client_type = type;
     srand(time(NULL));
-    if (type == UNIVERSAL)
-    {
-        room_down();
-        if (mem->waiting_females == 0) // if there are men waiting, set client to be served to man
-            client_type = 1;
-        else if (mem->waiting_females == 0) // if there are women waiting, set client to be served to woman
-            client_type = 0;
-        else // if there are both male and female clients waiting, randomize choice
-            client_type = rand() % 2;
-        room_up();
-    }
 
     while (1)
     {
+        if (type == UNIVERSAL)
+        {
+            room_down();
+            if (mem->waiting_females > mem->waiting_males) // if there are more females than males in the waiting room, serve a female
+                client_type = 0;
+            else
+                client_type = 1;
+            room_up();
+        }
 
         // decrements the semaphore for client of given type,
         // if semaphore is negative it means there are no clients
@@ -216,7 +214,7 @@ void barber(int id, int type)
         else
             mem->waiting_males--;
 
-        printf("WAITING ROOM: %d FEMALES, %d MALES\n", mem->waiting_females, mem->waiting_males);
+        printf("\nWAITING ROOM: %d FEMALES, %d MALES\n\n", mem->waiting_females, mem->waiting_males);
 
         // setting barber semaphore up
         barber_up(type);
@@ -232,7 +230,7 @@ void barber(int id, int type)
             printf("UNIVERSAL");
         printf(" barber[%d] is cutting hair\n", id);
         srand(time(NULL));
-        sleep(rand() % 3); // random haircut time between 0 and 2 seconds
+        sleep(rand() % 2); // random haircut time between 0 and 2 seconds
     }
 }
 
@@ -240,6 +238,8 @@ void client(int id, int type)
 {
     int barber_type = type;
     int sem_barber = semget(KEY_BARBER, 3, 0660);
+    if (sem_barber < 0)
+        perror("error in semget in client()");
     type == 0 ? printf("FEMALE") : printf("MALE");
     printf(" client[%d] came into the barber saloon.\n", id);
 
@@ -255,9 +255,8 @@ void client(int id, int type)
             mem->waiting_females++;
         else
             mem->waiting_males++;
-        if (semctl(sem_barber, type, GETVAL) < semctl(sem_barber, UNIVERSAL, GETVAL))
-            barber_type = UNIVERSAL;
-        printf("WAITING ROOM: %d FEMALES, %d MALES\n", mem->waiting_females, mem->waiting_males);
+
+        printf("\nWAITING ROOM: %d FEMALES, %d MALES\n\n", mem->waiting_females, mem->waiting_males);
 
         // setting client semaphore up
         client_up(type);
@@ -265,6 +264,8 @@ void client(int id, int type)
         // unlocking the waiting room semaphore
         room_up();
 
+        if (semctl(sem_barber, type, GETVAL) < semctl(sem_barber, UNIVERSAL, GETVAL))
+            barber_type = UNIVERSAL;
         // setting barber semaphore down
         barber_down(barber_type);
 
