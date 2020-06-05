@@ -77,6 +77,8 @@ int main(int argc, char *argv[])
     }
 
     int retv = m ? copy_mmap(fd_from, fd_to) : copy_read_write(fd_from, fd_to);
+    close(fd_from);
+    close(fd_to);
     return retv;
 }
 
