@@ -11,20 +11,22 @@
 #define LEFT (i + N - 1) % N
 #define RIGHT (i + 1) % N
 
-pthread_mutex_t m;
-pthread_mutex_t s[N];
-pthread_t philosopher_tid[N];
-int state[N];
+// global variables
+pthread_mutex_t m;            // mutex for critical region
+pthread_mutex_t s[N];         // philosophers mutex array (for synchronization)
+pthread_t philosopher_tid[N]; // philosophers threads ids
+int state[N];                 // philosophers state array
+
+// functions
 void grab_forks(int i);
 void put_away_forks(int i);
 void test(int i);
 void *philosopher(void *arg);
 void think(int i);
 void eat(int i);
-int terminate_threads();
-int destroy_mutexes();
 int clean_up();
 
+// state enum
 enum state
 {
     THINKING,
@@ -95,13 +97,13 @@ void test(int i)
 void think(int i)
 {
     printf("PHILOSOPHER[%d]: THINKING\n", i);
-    sleep(3);
+    sleep(3); // time before a philosopher tries to grab forks
 }
 
 void eat(int i)
 {
     printf("PHILOSOPHER[%d]: EATING\n", i);
-    sleep(3);
+    sleep(3); // meal time
 }
 
 void *philosopher(void *arg)
@@ -113,7 +115,8 @@ void *philosopher(void *arg)
         perror("error whyle setting cancel type to asynchronous");
         exit(EXIT_FAILURE);
     }
-    int i = *((int *)arg);
+
+    int i = *((int *)arg); // the argument type in the function pthread_create is void* so it needs to be casted to int
 
     while (true)
     {
@@ -124,21 +127,6 @@ void *philosopher(void *arg)
     }
 
     return NULL;
-}
-
-int terminate_threads()
-{
-    for (int i = 0; i < N; i++)
-    {
-        // sending a cancellation request to a thread and waiting for it to terminate
-        pthread_cancel(philosopher_tid[i]);
-        if (pthread_join(philosopher_tid[i], NULL) != 0)
-        {
-            perror("error in clean_up()");
-            return 1;
-        }
-    }
-    return 0;
 }
 
 int clean_up()
@@ -157,7 +145,13 @@ int clean_up()
     pthread_mutex_destroy(&m);
     for (int i = 0; i < N; i++)
     {
-        pthread_mutex_destroy(&s[i]);
+        // unlocking the mutexes before destroying them
+        pthread_mutex_unlock(&s[i]);
+        if (pthread_mutex_destroy(&s[i]) != 0)
+        {
+            perror("error in clean_up()");
+            return 1;
+        }
     }
 
     return 0;
